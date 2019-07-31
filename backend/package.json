@@ -1,0 +1,32 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Node express backend for JWT auth + Postgres + Hasura on heroku",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "nodemon --inspect=9222 ./src/index.js",
+    "dev": "HASURA_GRAPHQL_ENDPOINT=https://graphql-jwt-tutorial.herokuapp.com/v1/graphql HASURA_GRAPHQL_ADMIN_SECRET=graphql-jwt-secret nodemon --inspect=9222 ./src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Node",
+    "express",
+    "hasura"
+  ],
+  "author": "Vladimir Novick",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "boom": "^7.3.0",
+    "cookie-parser": "^1.4.4",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "express-jwt": "^5.3.1",
+    "graphql-request": "^1.8.2",
+    "joi": "^14.3.1",
+    "jsonwebtoken": "^8.5.1",
+    "morgan": "^1.9.1",
+    "nodemon": "^1.19.1",
+    "uuid": "^3.3.2"
+  }
+}
