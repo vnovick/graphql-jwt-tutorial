@@ -182,14 +182,6 @@ router.post('/new-password', async (req, res, next) => {
   res.send('OK');
 });
 
-router.post('/logout', async (req, res, next) => {
-  res.cookie('refetch_token', null, {
-    httpOnly: true,
-  });
-  res.send('OK')
-})
-
-
 router.post('/login', async (req, res, next) => {
 
   // validate username and password
@@ -289,23 +281,32 @@ router.post('/login', async (req, res, next) => {
     return next(Boom.badImplementation("Could not update 'refetch token' for user"));
   }
 
-  res.cookie('refetch_token', refetch_token, {
-    maxAge: REFETCH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+  res.cookie('jwt_token', jwt_token, {
+    maxAge: JWT_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
     httpOnly: true,
   });
 
   // return jwt token and refetch token to client
   res.json({
     jwt_token,
-    refetch_token
+    refetch_token,
+    user_id: user.id,
   });
 });
 
 router.post('/refetch-token', async (req, res, next) => {
 
+  // validate username and password
+  const schema = Joi.object().keys({
+    refetch_token: Joi.string().required(),
+  });
 
-  console.log(req.cookies)
-  const { refetch_token } = req.cookies;
+  const { error, value } = schema.validate(req.body);
+  if (error) {
+    return next(Boom.badRequest(error.details[0].message));
+  }
+
+  const { refetch_token } = value;
 
   let query = `
   query get_refetch_token(
@@ -393,14 +394,15 @@ router.post('/refetch-token', async (req, res, next) => {
   // generate new jwt token
   const jwt_token = auth_tools.generateJwtToken(user);
 
-  res.cookie('refetch_token', jwt_token, {
-    maxAge: REFETCH_TOKEN_EXPIRES * 60 * 1000,
+  res.cookie('jwt_token', jwt_token, {
+    maxAge: JWT_TOKEN_EXPIRES * 60 * 1000,
     httpOnly: true,
   });
 
   res.json({
     jwt_token,
-    refetch_token: new_refetch_token
+    refetch_token: new_refetch_token,
+    user_id,
   });
 });
 
