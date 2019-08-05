@@ -253,6 +253,7 @@ router.post('/login', async (req, res, next) => {
   console.warn('user: ' + JSON.stringify(user, null, 2));
 
   const jwt_token = auth_tools.generateJwtToken(user);
+  const jwt_token_expiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
 
   // generate refetch token and put in database
   query = `
@@ -281,16 +282,16 @@ router.post('/login', async (req, res, next) => {
     return next(Boom.badImplementation("Could not update 'refetch token' for user"));
   }
 
-  res.cookie('jwt_token', jwt_token, {
-    maxAge: JWT_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
-    httpOnly: true,
-  });
+  // res.cookie('jwt_token', jwt_token, {
+  //   maxAge: JWT_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+  //   httpOnly: true,
+  // });
 
   // return jwt token and refetch token to client
   res.json({
     jwt_token,
     refetch_token,
-    user_id: user.id,
+    jwt_token_expiry
   });
 });
 
@@ -393,14 +394,12 @@ router.post('/refetch-token', async (req, res, next) => {
 
   // generate new jwt token
   const jwt_token = auth_tools.generateJwtToken(user);
+  const jwt_token_expiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
 
-  res.cookie('jwt_token', jwt_token, {
-    maxAge: JWT_TOKEN_EXPIRES * 60 * 1000,
-    httpOnly: true,
-  });
 
   res.json({
     jwt_token,
+    jwt_token_expiry,
     refetch_token: new_refetch_token,
     user_id,
   });

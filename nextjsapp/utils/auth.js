@@ -1,4 +1,4 @@
-import { Component } from 'react'
+import { Component, useState, useEffect } from 'react'
 import Router from 'next/router'
 import nextCookie from 'next-cookies'
 import cookie from 'js-cookie'
@@ -7,12 +7,18 @@ import nodeCookie from 'cookie'
 let inMemoryToken;
 
 
-function login ({ jwt_token, refetch_token }, ctx) {
+function login ({ jwt_token, jwt_token_expiry,  refetch_token }, ctx) {
   cookie.set('refetch_token', refetch_token, { expires: 1 })
-  inMemoryToken = jwt_token;
+  inMemoryToken = {
+    token: jwt_token,
+    expiry: jwt_token_expiry
+  };
+  
   if (ctx && ctx.req) {
-    ctx.res.setHeader('Set-Cookie',nodeCookie.serialize('refetch_token', refetch_token));
-    ctx.res.writeHead(302, { Location: '/app' })
+    ctx.res.writeHead(302, { 
+      Location: '/app',
+      'Set-Cookie':`refetch_token=${refetch_token}; expires=${+new Date(new Date().getTime()+86409000).toUTCString()}`
+    })
     ctx.res.end()
   }
   Router.push('/app')
@@ -33,6 +39,7 @@ const getDisplayName = Component =>
 function withAuthSync (WrappedComponent) {
 
   return class extends Component {
+
     static displayName = `withAuthSync(${getDisplayName(WrappedComponent)})`
 
     static async getInitialProps (ctx) {
@@ -40,20 +47,35 @@ function withAuthSync (WrappedComponent) {
       if (!inMemoryToken) {
         inMemoryToken = token;
       }
-      console.log("In memory token", inMemoryToken)
       const componentProps =
         WrappedComponent.getInitialProps &&
         (await WrappedComponent.getInitialProps(ctx))
 
-      return { ...componentProps, token: inMemoryToken }
+      return { ...componentProps, accessToken: inMemoryToken }
     }
+
 
     constructor (props) {
       super(props)
       this.syncLogout = this.syncLogout.bind(this)
     }
 
-    componentDidMount () {
+    async componentDidMount () {
+      await auth();
+      this.interval = setInterval(() => {
+        if (inMemoryToken){
+          console.log("Expiry date vs current date", new Date(inMemoryToken.expiry).toUTCString(), new Date(new Date().getTime()).toUTCString())
+          if (
+            new Date(inMemoryToken.expiry).toUTCString() <= 
+            new Date(new Date().getTime()).toUTCString()
+            ) {
+            console.log("Silent refresh")
+            inMemoryToken = null;
+            auth()
+          }
+        }
+      }, 60000);
+
       window.addEventListener('storage', this.syncLogout)
     }
 
@@ -86,7 +108,6 @@ async function auth(ctx) {
     //silent token refetch if refetch token present in cookie
     if (refetch_token) {
       const url = 'http://localhost:3010/auth/refetch-token'
-      console.log(refetch_token)
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -97,8 +118,8 @@ async function auth(ctx) {
           body: JSON.stringify({ refetch_token })
         })
         if (response.status === 200) {
-          const { jwt_token, refetch_token } = await response.json()
-          await login({ jwt_token, refetch_token }, ctx)
+          const { jwt_token, refetch_token, jwt_token_expiry } = await response.json()
+          await login({ jwt_token, refetch_token, jwt_token_expiry }, ctx)
         } else {
           let error = new Error(response.statusText)
           error.response = response

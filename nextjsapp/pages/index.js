@@ -1,12 +1,10 @@
 import React from 'react'
 import Layout from '../components/layout'
-
-const Home = () => (
+const Home = (props) => (
   <Layout>
     <h1>Cookie-based authentication example</h1>
 
     <p>Steps to test the functionality:</p>
-
     <ol>
       <li>Click login and enter your GitHub username.</li>
       <li>

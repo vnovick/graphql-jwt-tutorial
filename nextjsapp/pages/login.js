@@ -27,8 +27,8 @@ function Login () {
         body: JSON.stringify({ username, password })
       })
       if (response.status === 200) {
-        const { jwt_token, refetch_token } = await response.json()
-        await login({ jwt_token, refetch_token })
+        const { jwt_token, refetch_token, jwt_token_expiry } = await response.json()
+        await login({ jwt_token, refetch_token, jwt_token_expiry })
       } else {
         console.log('Login failed.')
         // https://github.com/developit/unfetch#caveats
