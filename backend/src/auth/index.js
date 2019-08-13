@@ -112,75 +112,6 @@ router.post('/register', async (req, res, next) => {
   res.send('OK');
 });
 
-router.post('/new-password', async (req, res, next) => {
-  let hasura_data;
-  let password_hash;
-
-  const schema = Joi.object().keys({
-    secret_token: Joi.string().uuid({version: ['uuidv4']}).required(),
-    password: Joi.string().required(),
-  });
-
-  const { error, value } = schema.validate(req.body);
-
-  if (error) {
-    return next(Boom.badRequest(error.details[0].message));
-  }
-
-  const {
-    secret_token,
-    password,
-  } = value;
-
-  // update password and username activation token
-  try {
-    password_hash = await bcrypt.hash(password, 10);
-  } catch(e) {
-    console.error(e);
-    return next(Boom.badImplementation(`Unable to generate 'password_hash'`));
-  }
-
-  const query = `
-  mutation  (
-    $secret_token: uuid!,
-    $password_hash: String!,
-    $new_secret_token: uuid!
-  ) {
-    update_${schema_name}users (
-      where: {
-        secret_token: { _eq: $secret_token}
-      }
-      _set: {
-        password: $password_hash,
-        secret_token: $new_secret_token
-      }
-    ) {
-      affected_rows
-    }
-  }
-  `;
-
-  try {
-    const new_secret_token = uuidv4();
-    hasura_data = await graphql_client.request(query, {
-      secret_token,
-      password_hash,
-      new_secret_token,
-    });
-  } catch (e) {
-    console.error(e);
-    return next(Boom.unauthorized(`Unable to update 'password'`));
-  }
-
-
-  if (hasura.update_users.affected_rows === 0) {
-    console.log('0 affected rows');
-    return next(Boom.badImplementation(`Unable to update password for user`));
-  }
-
-  // return 200 OK
-  res.send('OK');
-});
 
 router.post('/logout', async(req, res, next) => {
   res.cookie('refetch_token', "", {
@@ -247,11 +178,6 @@ router.post('/login', async (req, res, next) => {
   // check if we got any user back
   const user = hasura_data[`${schema_name}users`][0];
 
-  // if (!user.active) {
-  //   // console.error('User not activated');
-  //   return next(Boom.unauthorized('User not activated.'));
-  // }
-
   // see if password hashes matches
   const match = await bcrypt.compare(password, user.password);
 
@@ -307,8 +233,6 @@ router.post('/login', async (req, res, next) => {
 
 router.post('/refetch-token', async (req, res, next) => {
 
-  console.log(req.cookies)
-  console.log(req.headers)
   // validate username and password
 
   const refetch_token = req.cookies['refetch_token'];
