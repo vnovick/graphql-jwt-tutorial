@@ -182,7 +182,16 @@ router.post('/new-password', async (req, res, next) => {
   res.send('OK');
 });
 
+router.post('/logout', async(req, res, next) => {
+  res.cookie('refetch_token', "", {
+    httpOnly: true,
+    expires: new Date(0)
+  });
+  res.send('OK');
+})
+
 router.post('/login', async (req, res, next) => {
+  console.log(req.cookies)
 
   // validate username and password
   const schema = Joi.object().keys({
@@ -282,10 +291,11 @@ router.post('/login', async (req, res, next) => {
     return next(Boom.badImplementation("Could not update 'refetch token' for user"));
   }
 
-  // res.cookie('jwt_token', jwt_token, {
-  //   maxAge: JWT_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
-  //   httpOnly: true,
-  // });
+  res.cookie('refetch_token', refetch_token, {
+    maxAge: REFETCH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+    httpOnly: true,
+    secure: false
+  });
 
   // return jwt token and refetch token to client
   res.json({
@@ -297,17 +307,11 @@ router.post('/login', async (req, res, next) => {
 
 router.post('/refetch-token', async (req, res, next) => {
 
+  console.log(req.cookies)
+  console.log(req.headers)
   // validate username and password
-  const schema = Joi.object().keys({
-    refetch_token: Joi.string().required(),
-  });
 
-  const { error, value } = schema.validate(req.body);
-  if (error) {
-    return next(Boom.badRequest(error.details[0].message));
-  }
-
-  const { refetch_token } = value;
+  const refetch_token = req.cookies['refetch_token'];
 
   let query = `
   query get_refetch_token(
@@ -396,6 +400,11 @@ router.post('/refetch-token', async (req, res, next) => {
   const jwt_token = auth_tools.generateJwtToken(user);
   const jwt_token_expiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
 
+  res.cookie('refetch_token', new_refetch_token, {
+    maxAge: REFETCH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+    httpOnly: true,
+    secure: false
+  });
 
   res.json({
     jwt_token,

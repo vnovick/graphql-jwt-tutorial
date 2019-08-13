@@ -32,11 +32,11 @@ const createApolloClient = (authToken) => {
 
 
 const App = ({ accessToken }) => {
-  const client = createApolloClient(accessToken.token);
+  const client = createApolloClient(accessToken ? accessToken.token: 'none');
   return (
     <ApolloProvider client={client}>
       <Layout>
-        <h1>{accessToken.token}</h1>
+        {/* <h1>{accessToken.token}</h1> */}
         <Query query={GET_USER}>
           {({loading, error, data}) => {
             if (loading) {
