@@ -122,7 +122,6 @@ router.post('/logout', async(req, res, next) => {
 })
 
 router.post('/login', async (req, res, next) => {
-  console.log(req.cookies)
 
   // validate username and password
   const schema = Joi.object().keys({
@@ -334,6 +333,7 @@ router.post('/refetch-token', async (req, res, next) => {
     jwt_token,
     jwt_token_expiry,
     refetch_token: new_refetch_token,
+    refetch_token_expiry: REFETCH_TOKEN_EXPIRES * 60 * 1000,
     user_id,
   });
 });

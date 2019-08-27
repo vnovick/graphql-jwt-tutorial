@@ -51,6 +51,7 @@ function withAuthSync (WrappedComponent) {
 
       return { ...componentProps, accessToken: inMemoryToken }
     }
+    
 
 
     constructor (props) {
@@ -59,15 +60,12 @@ function withAuthSync (WrappedComponent) {
     }
 
     async componentDidMount () {
-      await auth();
       this.interval = setInterval(() => {
         if (inMemoryToken){
-          console.log("Expiry date vs current date", new Date(inMemoryToken.expiry).toUTCString(), new Date(new Date().getTime()).toUTCString())
           if (
             new Date(inMemoryToken.expiry).toUTCString() <= 
             new Date(new Date().getTime()).toUTCString()
             ) {
-            console.log("Silent refresh")
             inMemoryToken = null;
             auth()
           }
@@ -102,8 +100,6 @@ async function auth(ctx) {
    * Additionally if there's no token it means the user is not logged in.
    */
   if (!inMemoryToken) {
-    console.log("no in memory token")
-    //silent token refetch if refetch token present in cookie
 
     const headers = ctx && ctx.req ? {
       'Cookie': ctx.req.headers.cookie
@@ -120,10 +116,10 @@ async function auth(ctx) {
           },
         })
         if (response.status === 200) {
-          const { jwt_token, refetch_token, jwt_token_expiry } = await response.json()
+          const { jwt_token, refetch_token, jwt_token_expiry, refetch_token_expiry } = await response.json()
           // setup httpOnly cookie if SSR
           if (ctx && ctx.req) {
-            ctx.res.setHeader('Set-Cookie',`refetch_token=${refetch_token};HttpOnly`);
+            ctx.res.setHeader('Set-Cookie',`refetch_token=${refetch_token};HttpOnly;Max-Age=${refetch_token_expiry}`);
           }
           await login({ jwt_token, jwt_token_expiry }, true)
         } else {
@@ -132,7 +128,7 @@ async function auth(ctx) {
           throw error
         }
       } catch (error) {
-        if(ctx.req) {
+        if(ctx && ctx.req) {
           ctx.res.writeHead(302, { Location: '/login' })
           ctx.res.end()
         }
@@ -140,9 +136,9 @@ async function auth(ctx) {
       }
     }
 
-  // We already checked for server. This should only happen on client.
   const jwt_token = inMemoryToken;
 
+  // We already checked for server. This should only happen on client.
   if (!jwt_token) {
     Router.push('/login')
   }
@@ -150,4 +146,9 @@ async function auth(ctx) {
   return jwt_token
 }
 
-export { login, logout, withAuthSync, auth }
+function getToken() {
+  return inMemoryToken
+}
+
+
+export { login, logout, withAuthSync, auth, getToken }

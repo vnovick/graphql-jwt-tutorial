@@ -2,14 +2,17 @@ import React from 'react'
 import Router from 'next/router'
 import fetch from 'isomorphic-unfetch'
 import Layout from '../components/layout'
-import { withAuthSync } from '../utils/auth'
+import { withAuthSync, getToken, auth, logout } from '../utils/auth'
 import ApolloClient from 'apollo-client';
 import { InMemoryCache } from 'apollo-cache-inmemory';
 import { HttpLink } from 'apollo-link-http';
 import { ApolloProvider } from 'react-apollo';
+import { ApolloLink, concat } from 'apollo-link';
 import { Query } from 'react-apollo';
 import gql from 'graphql-tag';
- 
+import { onError } from 'apollo-link-error';
+
+
 const GET_USER = gql`
   query getUser {
     users {
@@ -17,28 +20,44 @@ const GET_USER = gql`
     }
  }`
 
+let appJWTToken
 
-const createApolloClient = (authToken) => {
-  return new ApolloClient({
-    link: new HttpLink({
-      uri: 'https://graphql-jwt-tutorial.herokuapp.com/v1/graphql',
+ const httpLink = new HttpLink({uri: 'https://graphql-jwt-tutorial.herokuapp.com/v1/graphql'})
+
+ const logoutLink = onError(({ networkError }) => {
+  if (networkError.statusCode === 401) logout();
+ })
+
+ const authMiddleware = new ApolloLink((operation, forward)=> {
+  if (appJWTToken) {
+    operation.setContext({
       headers: {
-        Authorization: `Bearer ${authToken}`
+        Authorization: `Bearer ${appJWTToken}`
       }
-    }),
-    cache: new InMemoryCache(),
-  });
-};
+    });
+  } 
+  return forward(operation);
+ })
+
+
+const apolloClient = new ApolloClient({
+  link: logoutLink.concat(concat(authMiddleware, httpLink)),
+  cache: new InMemoryCache(),
+});
 
 
 const App = ({ accessToken }) => {
-  const client = createApolloClient(accessToken ? accessToken.token: 'none');
+  let previousToken = appJWTToken;
+  appJWTToken = accessToken.token
   return (
-    <ApolloProvider client={client}>
+    <ApolloProvider client={apolloClient}>
       <Layout>
-        {/* <h1>{accessToken.token}</h1> */}
         <Query query={GET_USER}>
-          {({loading, error, data}) => {
+          {({loading, error, data, refetch}) => {
+            // refetch if token has changed
+            if (!previousToken && (previousToken !== appJWTToken)) {
+              refetch()
+            }
             if (loading) {
               return <div>Loading</div>
             }

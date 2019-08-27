@@ -17,7 +17,7 @@ const Header = props => (
         </li>
         <li>
           <Link href='/app'>
-            <a>Dashboard</a>
+            <a>App</a>
           </Link>
         </li>
         <li>
