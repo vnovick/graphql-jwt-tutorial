@@ -1,0 +1,19 @@
+- args:
+    cascade: false
+    sql: "CREATE TABLE refresh_tokens (\n    id integer NOT NULL,\n    refresh_token
+      uuid NOT NULL,\n    user_id integer NOT NULL,\n    expires_at timestamp with
+      time zone NOT NULL,\n    created_at timestamp with time zone DEFAULT now() NOT
+      NULL\n);\n\n\nCREATE SEQUENCE refresh_tokens_id_seq\n    AS integer\n    START
+      WITH 1\n    INCREMENT BY 1\n    NO MINVALUE\n    NO MAXVALUE\n    CACHE 1;\n\nALTER
+      SEQUENCE refresh_tokens_id_seq OWNED BY refresh_tokens.id;\n\nALTER TABLE ONLY
+      refresh_tokens ALTER COLUMN id SET DEFAULT nextval('refresh_tokens_id_seq'::regclass);\n\n\nALTER
+      TABLE ONLY refresh_tokens\n    ADD CONSTRAINT refresh_tokens_pkey PRIMARY KEY
+      (id);\n\nALTER TABLE ONLY refresh_tokens\n    ADD CONSTRAINT refresh_tokens_refresh_token_key
+      UNIQUE (refresh_token);\n    \n\nALTER TABLE ONLY refresh_tokens\n    ADD CONSTRAINT
+      refresh_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE
+      RESTRICT ON DELETE CASCADE;\n\n"
+  type: run_sql
+- args:
+    name: refresh_tokens
+    schema: public
+  type: add_existing_table_or_view

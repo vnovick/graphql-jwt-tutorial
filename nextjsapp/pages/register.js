@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import fetch from 'isomorphic-unfetch'
 import Layout from '../components/layout'
 import { login } from '../utils/auth'
+import Router from 'next/router'
 
 function Login () {
   const [userData, setUserData] = useState({ username: '', password: '', error: '' })
@@ -14,7 +15,7 @@ function Login () {
     })
 
     const { username, password } = userData
-    const url = 'http://localhost:3010/auth/login'
+    const url = 'http://localhost:3010/auth/register'
 
     try {
       const response = await fetch(url, {
@@ -27,10 +28,10 @@ function Login () {
         body: JSON.stringify({ username, password })
       })
       if (response.status === 200) {
-        const { jwt_token, jwt_token_expiry } = await response.json()
-        await login({ jwt_token, jwt_token_expiry })
+        alert("Success")
+        Router.push('/login')
       } else {
-        console.log('Login failed.')
+        console.log('Register failed.')
         // https://github.com/developit/unfetch#caveats
         let error = new Error(response.statusText)
         error.response = response
@@ -55,7 +56,7 @@ function Login () {
     <Layout>
       <div className='login'>
         <form onSubmit={handleSubmit}>
-          <label htmlFor='username'>Login</label>
+          <label htmlFor='username'>Register</label>
 
           <input
             type='text'
@@ -82,11 +83,10 @@ function Login () {
             }
           />
 
-          <button type='submit'>Login</button>
+          <button type='submit'>Register</button>
 
           {userData.error && <p className='error'>Error: {userData.error}</p>}
         </form>
-        <a href="/register">Register</a>
       </div>
       <style jsx>{`
         .login {

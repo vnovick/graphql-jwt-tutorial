@@ -94,7 +94,7 @@ function withAuthSync (WrappedComponent) {
 }
 
 async function auth(ctx) {
-  const { refetch_token } = nextCookie(ctx)
+  const { refresh_token } = nextCookie(ctx)
   /*
    * If `ctx.req` is available it means we are on the server.
    * Additionally if there's no token it means the user is not logged in.
@@ -104,7 +104,7 @@ async function auth(ctx) {
     const headers = ctx && ctx.req ? {
       'Cookie': ctx.req.headers.cookie
     } : {}
-      const url = 'http://localhost:3010/auth/refetch-token'
+      const url = 'http://localhost:3010/auth/refresh-token'
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -116,10 +116,10 @@ async function auth(ctx) {
           },
         })
         if (response.status === 200) {
-          const { jwt_token, refetch_token, jwt_token_expiry, refetch_token_expiry } = await response.json()
+          const { jwt_token, refresh_token, jwt_token_expiry, refresh_token_expiry } = await response.json()
           // setup httpOnly cookie if SSR
           if (ctx && ctx.req) {
-            ctx.res.setHeader('Set-Cookie',`refetch_token=${refetch_token};HttpOnly;Max-Age=${refetch_token_expiry}`);
+            ctx.res.setHeader('Set-Cookie',`refresh_token=${refresh_token};HttpOnly;Max-Age=${refresh_token_expiry}`);
           }
           await login({ jwt_token, jwt_token_expiry }, true)
         } else {

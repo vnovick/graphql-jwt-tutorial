@@ -18,7 +18,7 @@ const {
   USER_FIELDS,
   USER_REGISTRATION_AUTO_ACTIVE,
   USER_MANAGEMENT_DATABASE_SCHEMA_NAME,
-  REFETCH_TOKEN_EXPIRES,
+  REFRESH_TOKEN_EXPIRES,
   JWT_TOKEN_EXPIRES,
 } = require('../config');
 
@@ -114,7 +114,7 @@ router.post('/register', async (req, res, next) => {
 
 
 router.post('/logout', async(req, res, next) => {
-  res.cookie('refetch_token', "", {
+  res.cookie('refresh_token', "", {
     httpOnly: true,
     expires: new Date(0)
   });
@@ -189,60 +189,60 @@ router.post('/login', async (req, res, next) => {
   const jwt_token = auth_tools.generateJwtToken(user);
   const jwt_token_expiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
 
-  // generate refetch token and put in database
+  // generate refresh token and put in database
   query = `
   mutation (
-    $refetch_token_data: ${schema_name}refetch_tokens_insert_input!
+    $refresh_token_data: ${schema_name}refresh_tokens_insert_input!
   ) {
-    insert_${schema_name}refetch_tokens (
-      objects: [$refetch_token_data]
+    insert_${schema_name}refresh_tokens (
+      objects: [$refresh_token_data]
     ) {
       affected_rows
     }
   }
   `;
 
-  const refetch_token = uuidv4();
+  const refresh_token = uuidv4();
   try {
     await graphql_client.request(query, {
-      refetch_token_data: {
+      refresh_token_data: {
         user_id: user.id,
-        refetch_token: refetch_token,
-        expires_at: new Date(new Date().getTime() + (REFETCH_TOKEN_EXPIRES * 60 * 1000)), // convert from minutes to milli seconds
+        refresh_token: refresh_token,
+        expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minutes to milli seconds
       },
     });
   } catch (e) {
     console.error(e);
-    return next(Boom.badImplementation("Could not update 'refetch token' for user"));
+    return next(Boom.badImplementation("Could not update 'refresh token' for user"));
   }
 
-  res.cookie('refetch_token', refetch_token, {
-    maxAge: REFETCH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+  res.cookie('refresh_token', refresh_token, {
+    maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
     httpOnly: true,
     secure: false
   });
 
-  // return jwt token and refetch token to client
+  // return jwt token and refresh token to client
   res.json({
     jwt_token,
-    refetch_token,
+    refresh_token,
     jwt_token_expiry
   });
 });
 
-router.post('/refetch-token', async (req, res, next) => {
+router.post('/refresh-token', async (req, res, next) => {
 
   // validate username and password
 
-  const refetch_token = req.cookies['refetch_token'];
+  const refresh_token = req.cookies['refresh_token'];
 
   let query = `
-  query get_refetch_token(
-    $refetch_token: uuid!
+  query get_refresh_token(
+    $refresh_token: uuid!
   ) {
-    ${schema_name}refetch_tokens (
+    ${schema_name}refresh_tokens (
       where: {
-        refetch_token: { _eq: $refetch_token }
+        refresh_token: { _eq: $refresh_token }
       }
     ) {
       user {
@@ -257,36 +257,37 @@ router.post('/refetch-token', async (req, res, next) => {
   }
   `;
 
+  console.log(refresh_token)
   let hasura_data;
   try {
     hasura_data = await graphql_client.request(query, {
-      refetch_token
+      refresh_token
     });
   } catch (e) {
     console.error(e);
-    return next(Boom.unauthorized("Invalid refetch token request"));
+    return next(Boom.unauthorized("Invalid refresh token request"));
   }
 
-  if (hasura_data[`${schema_name}refetch_tokens`].length === 0) {
-    return next(Boom.unauthorized("invalid refetch token"));
+  if (hasura_data[`${schema_name}refresh_tokens`].length === 0) {
+    return next(Boom.unauthorized("invalid refresh token"));
   }
 
-  const user = hasura_data[`${schema_name}refetch_tokens`][0].user;
+  const user = hasura_data[`${schema_name}refresh_tokens`][0].user;
   const user_id = user.id
 
-  // delete current refetch token and generate a new, and insert the
-  // new refetch_token in the database
+  // delete current refresh token and generate a new, and insert the
+  // new refresh_token in the database
   // two mutations as transaction
   query = `
   mutation (
-    $old_refetch_token: uuid!,
-    $new_refetch_token_data: refetch_tokens_insert_input!
+    $old_refresh_token: uuid!,
+    $new_refresh_token_data: refresh_tokens_insert_input!
     $user_id: Int!
   ) {
-    delete_${schema_name}refetch_tokens (
+    delete_${schema_name}refresh_tokens (
       where: {
         _and: [{
-          refetch_token: { _eq: $old_refetch_token }
+          refresh_token: { _eq: $old_refresh_token }
         }, {
           user_id: { _eq: $user_id }
         }]
@@ -294,37 +295,37 @@ router.post('/refetch-token', async (req, res, next) => {
     ) {
       affected_rows
     }
-    insert_${schema_name}refetch_tokens (
-      objects: [$new_refetch_token_data]
+    insert_${schema_name}refresh_tokens (
+      objects: [$new_refresh_token_data]
     ) {
       affected_rows
     }
   }
   `;
 
-  const new_refetch_token = uuidv4();
+  const new_refresh_token = uuidv4();
   try {
     await graphql_client.request(query, {
-      old_refetch_token: refetch_token,
-      new_refetch_token_data: {
+      old_refresh_token: refresh_token,
+      new_refresh_token_data: {
         user_id: user_id,
-        refetch_token: new_refetch_token,
-        expires_at: new Date(new Date().getTime() + (REFETCH_TOKEN_EXPIRES * 60 * 1000)), // convert from minutes to milli seconds
+        refresh_token: new_refresh_token,
+        expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minutes to milli seconds
       },
       user_id,
     });
   } catch (e) {
     console.error(e);
-    // console.error('unable to create new refetch token and delete old');
-    return next(Boom.unauthorized("Invalid 'refetch_token' or 'user_id'"));
+    // console.error('unable to create new refresh token and delete old');
+    return next(Boom.unauthorized("Invalid 'refresh_token' or 'user_id'"));
   }
 
   // generate new jwt token
   const jwt_token = auth_tools.generateJwtToken(user);
   const jwt_token_expiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
 
-  res.cookie('refetch_token', new_refetch_token, {
-    maxAge: REFETCH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+  res.cookie('refresh_token', new_refresh_token, {
+    maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
     httpOnly: true,
     secure: false
   });
@@ -332,8 +333,8 @@ router.post('/refetch-token', async (req, res, next) => {
   res.json({
     jwt_token,
     jwt_token_expiry,
-    refetch_token: new_refetch_token,
-    refetch_token_expiry: REFETCH_TOKEN_EXPIRES * 60 * 1000,
+    refresh_token: new_refresh_token,
+    refresh_token_expiry: REFRESH_TOKEN_EXPIRES * 60 * 1000,
     user_id,
   });
 });

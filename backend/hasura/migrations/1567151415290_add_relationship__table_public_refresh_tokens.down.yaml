@@ -1,0 +1,6 @@
+- args:
+    relationship: user
+    table:
+      name: refresh_tokens
+      schema: public
+  type: drop_relationship
