@@ -3,8 +3,9 @@ import fetch from 'isomorphic-unfetch'
 import Layout from '../components/layout'
 import { login } from '../utils/auth'
 import Router from 'next/router'
+import { withHostname } from '../utils/ctxWrapper'
 
-function Login () {
+function Register ({ hostname }) {
   const [userData, setUserData] = useState({ username: '', password: '', error: '' })
 
   async function handleSubmit (event) {
@@ -15,7 +16,7 @@ function Login () {
     })
 
     const { username, password } = userData
-    const url = 'http://localhost:3010/auth/register'
+    const url = `${hostname}/api/register`
 
     try {
       const response = await fetch(url, {
@@ -31,10 +32,11 @@ function Login () {
         alert("Success")
         Router.push('/login')
       } else {
-        console.log('Register failed.')
+        const rsp = await response.json()
+        console.log('Register failed.', rsp)
         // https://github.com/developit/unfetch#caveats
-        let error = new Error(response.statusText)
-        error.response = response
+        let error = new Error(rsp.message)
+        error.response = rsp
         throw error
       }
     } catch (error) {
@@ -44,9 +46,10 @@ function Login () {
       )
 
       const { response } = error
+      console.log(response)
       setUserData(
         Object.assign({}, userData, {
-          error: response ? response.statusText : error.message
+          error: response ? response.message : error.message
         })
       )
     }
@@ -122,4 +125,4 @@ function Login () {
   )
 }
 
-export default Login
+export default withHostname(Register)

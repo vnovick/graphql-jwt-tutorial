@@ -46,34 +46,6 @@ router.post('/register', async (req, res, next) => {
 
   const { username, password } = value;
 
-  // check for duplicates
-  let query = `
-  query (
-    $username: String!
-  ) {
-    ${schema_name}users (
-      where: {
-        username: { _eq: $username }
-      }
-    ) {
-      id
-    }
-  }
-  `;
-
-  try {
-    hasura_data = await graphql_client.request(query, {
-      username,
-    });
-  } catch (e) {
-    console.error(e);
-    return next(Boom.badImplementation("Unable to check for 'username' duplication"));
-  }
-
-  if (hasura_data[`${schema_name}users`].length !== 0) {
-    return next(Boom.unauthorized("The 'username' is already exist"));
-  }
-
   // generate password_hash
   try {
     password_hash = await bcrypt.hash(password, 10);
@@ -105,7 +77,10 @@ router.post('/register', async (req, res, next) => {
       },
     });
   } catch (e) {
-    console.error(e);
+    let isDuplicateError = e.response.errors.filter(({ extensions: { code }}) => code === 'constraint-violation').length > 0
+    if (isDuplicateError) {
+      return next(Boom.badRequest('User already exist'));
+    }
     return next(Boom.badImplementation('Unable to create user.'));
   }
 
@@ -257,7 +232,6 @@ router.post('/refresh-token', async (req, res, next) => {
   }
   `;
 
-  console.log(refresh_token)
   let hasura_data;
   try {
     hasura_data = await graphql_client.request(query, {

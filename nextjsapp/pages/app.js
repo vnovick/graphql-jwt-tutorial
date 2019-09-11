@@ -24,8 +24,16 @@ let appJWTToken
 
  const httpLink = new HttpLink({uri: 'https://graphql-jwt-tutorial.herokuapp.com/v1/graphql'})
 
- const logoutLink = onError(({ networkError }) => {
-  if (networkError.statusCode === 401) logout();
+ const logoutLink = onError(({ graphQLErrors, networkError }) => {
+   if (graphQLErrors) {
+    graphQLErrors.forEach(({ extensions }) => {
+      console.log(extensions)
+      if (extensions.code === 'invalid-jwt'){
+        logout()
+      }
+    }) 
+   }
+  if (networkError && networkError.statusCode === 401) logout();
  })
 
  const authMiddleware = new ApolloLink((operation, forward)=> {

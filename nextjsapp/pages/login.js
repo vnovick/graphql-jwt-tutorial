@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import fetch from 'isomorphic-unfetch'
 import Layout from '../components/layout'
-import { login } from '../utils/auth'
+import { login, getCurrentPath } from '../utils/auth'
+import { withHostname } from '../utils/ctxWrapper'
 
-function Login () {
+
+function Login ({ hostname }) {
   const [userData, setUserData] = useState({ username: '', password: '', error: '' })
 
   async function handleSubmit (event) {
@@ -13,8 +15,9 @@ function Login () {
       error: ''
     })
 
+
     const { username, password } = userData
-    const url = 'http://localhost:3010/auth/login'
+    const url = `${hostname}/api/login`
 
     try {
       const response = await fetch(url, {
@@ -122,4 +125,4 @@ function Login () {
   )
 }
 
-export default Login
+export default withHostname(Login)

@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "next",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "prod": "next export"
   },
   "dependencies": {
     "apollo-boost": "^0.4.4",
@@ -11,14 +12,21 @@
     "apollo-client": "^2.6.3",
     "apollo-link-error": "^1.1.11",
     "apollo-link-http": "^1.5.15",
+    "bcryptjs": "^2.4.3",
+    "boom": "^7.3.0",
+    "cookie": "^0.4.0",
     "graphql": "^14.4.2",
+    "graphql-request": "^1.8.2",
     "graphql-tag": "^2.10.1",
     "isomorphic-unfetch": "^3.0.0",
+    "joi": "^14.3.1",
     "js-cookie": "^2.2.0",
+    "jsonwebtoken": "^8.5.1",
     "next": "^9.0.1",
     "next-cookies": "^1.0.4",
     "react": "^16.8.6",
     "react-apollo": "^2.5.8",
-    "react-dom": "^16.8.6"
+    "react-dom": "^16.8.6",
+    "uuid": "^3.3.3"
   }
 }

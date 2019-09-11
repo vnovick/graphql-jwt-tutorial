@@ -19,7 +19,7 @@ function login ({ jwt_token, jwt_token_expiry }, noRedirect) {
 
 async function logout () {
   inMemoryToken = null;
-  const url = 'http://localhost:3010/auth/logout'
+  const url = '/api/logout'
   const response = await fetch(url, {
     method: 'POST',
     credentials: 'include',
@@ -33,6 +33,10 @@ async function logout () {
 // Gets the display name of a JSX component for dev tools
 const getDisplayName = Component =>
   Component.displayName || Component.name || 'Component'
+
+const subMinutes =  function (dt, minutes) {
+    return new Date(dt.getTime() - minutes*60000);
+}
 
 function withAuthSync (WrappedComponent) {
 
@@ -60,15 +64,19 @@ function withAuthSync (WrappedComponent) {
     }
 
     async componentDidMount () {
-      this.interval = setInterval(() => {
+      this.interval = setInterval(async () => {
         if (inMemoryToken){
           if (
-            new Date(inMemoryToken.expiry).toUTCString() <= 
-            new Date(new Date().getTime()).toUTCString()
+            subMinutes(new Date(inMemoryToken.expiry), 1) <= 
+            new Date(inMemoryToken.expiry)
             ) {
             inMemoryToken = null;
-            auth()
+            const token = await auth()
+            inMemoryToken = token;
           }
+        } else {
+          const token = await auth()
+          inMemoryToken = token;
         }
       }, 60000);
 
@@ -76,6 +84,7 @@ function withAuthSync (WrappedComponent) {
     }
 
     componentWillUnmount () {
+      clearInterval(this.interval)
       window.removeEventListener('storage', this.syncLogout)
       window.localStorage.removeItem('logout')
     }
@@ -95,6 +104,7 @@ function withAuthSync (WrappedComponent) {
 
 async function auth(ctx) {
   const { refresh_token } = nextCookie(ctx)
+
   /*
    * If `ctx.req` is available it means we are on the server.
    * Additionally if there's no token it means the user is not logged in.
@@ -104,7 +114,9 @@ async function auth(ctx) {
     const headers = ctx && ctx.req ? {
       'Cookie': ctx.req.headers.cookie
     } : {}
-      const url = 'http://localhost:3010/auth/refresh-token'
+      const hostname = typeof window === 'object' ? `${window.location.protocol}${window.location.host}` : `${ctx.req.headers.referer.split('://')[0]}://${ctx.req.headers.host}`
+      const url = ctx && ctx.req ? `${hostname}/api/refresh-token` : '/api/refresh-token'
+      console.log(url)
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -114,12 +126,13 @@ async function auth(ctx) {
             'Cache-Control': 'no-cache',
             ...headers
           },
+          body: JSON.stringify({})
         })
         if (response.status === 200) {
           const { jwt_token, refresh_token, jwt_token_expiry, refresh_token_expiry } = await response.json()
           // setup httpOnly cookie if SSR
           if (ctx && ctx.req) {
-            ctx.res.setHeader('Set-Cookie',`refresh_token=${refresh_token};HttpOnly;Max-Age=${refresh_token_expiry}`);
+            ctx.res.setHeader('Set-Cookie',`refresh_token=${refresh_token};HttpOnly;Max-Age=${refresh_token_expiry};Path="/"`);
           }
           await login({ jwt_token, jwt_token_expiry }, true)
         } else {
@@ -128,6 +141,7 @@ async function auth(ctx) {
           throw error
         }
       } catch (error) {
+        console.log(error)
         if(ctx && ctx.req) {
           ctx.res.writeHead(302, { Location: '/login' })
           ctx.res.end()
@@ -150,5 +164,13 @@ function getToken() {
   return inMemoryToken
 }
 
+const getCurrentPath = (originalUrl) => {
+  if (typeof window === 'object') {
+    return window.location.host
+  } else {
+    return originalUrl
+  }
+}
 
-export { login, logout, withAuthSync, auth, getToken }
+
+export { login, logout, withAuthSync, auth, getToken, getCurrentPath }
