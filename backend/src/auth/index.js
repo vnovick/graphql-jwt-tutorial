@@ -255,7 +255,7 @@ router.post('/refresh-token', async (req, res, next) => {
   query = `
   mutation (
     $old_refresh_token: uuid!,
-    $new_refresh_token_data: refresh_tokens_insert_input!
+    $new_refresh_token_data: ${schema_name}refresh_tokens_insert_input!
     $user_id: Int!
   ) {
     delete_${schema_name}refresh_tokens (
